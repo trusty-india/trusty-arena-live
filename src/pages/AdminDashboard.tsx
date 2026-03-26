@@ -1,15 +1,16 @@
 import Navbar from "@/components/Navbar";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield,
   Mic,
   Zap,
-  UserX,
   Gift,
   CreditCard,
   Plus,
   Trophy,
   Users,
+  Gamepad2,
+  LayoutGrid,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
@@ -21,7 +22,6 @@ import {
   subscribeToBattles,
   Battle,
   subscribeToAllUsers,
-  declareWinnerByUid,
   UserProfile,
 } from "@/lib/battleService";
 import {
@@ -38,8 +38,6 @@ const AdminDashboard = () => {
   const [liveBattles, setLiveBattles] = useState<Battle[]>([]);
   const [redeemRequests, setRedeemRequests] = useState<RedeemRequest[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [declaringWinner, setDeclaringWinner] = useState<string | null>(null);
-
   const [taskName, setTaskName] = useState("");
   const [taskType, setTaskType] = useState<"Solo" | "Team" | "4-Player">(
     "Solo",
@@ -67,12 +65,7 @@ const AdminDashboard = () => {
 
   const handleReward = async (uid: string, name: string) => {
     await addPointsToUser(uid, 500);
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ["#3B82F6", "#EF4444", "#10B981", "#F59E0B"],
-    });
+    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
     toast.success(`🎉 500 pts added to ${name}!`);
   };
 
@@ -90,7 +83,7 @@ const AdminDashboard = () => {
     });
     setTaskName("");
     setEntryFee("");
-    toast.success("✅ Battle created!");
+    toast.success(`✅ ${taskName} Table Created!`);
   };
 
   const handleDeclareWinnerFromBattle = async (
@@ -99,433 +92,300 @@ const AdminDashboard = () => {
     prize: number,
   ) => {
     try {
-      // Fixed: Removed the 4th argument (battle.title) as declareWinner only takes 3
       await declareWinner(battleId, winnerUid, prize);
-      confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
-      toast.success("Winner declared successfully!");
+      confetti({ particleCount: 300, spread: 150, origin: { y: 0.5 } });
+      toast.success("🏆 Winner Declared Successfully!");
     } catch (error) {
       toast.error("Error declaring winner");
     }
   };
 
-  const handleDeclareWinnerByUid = async (uid: string, name: string) => {
-    setDeclaringWinner(uid);
-    try {
-      await declareWinnerByUid(uid);
-      confetti({
-        particleCount: 200,
-        spread: 120,
-        origin: { y: 0.4 },
-        colors: ["#3B82F6", "#F59E0B", "#10B981"],
-      });
-      toast.success(`🏆 ${name} declared winner! +100 pts`);
-    } catch {
-      toast.error("Failed to declare winner");
-    } finally {
-      setDeclaringWinner(null);
-    }
-  };
-
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#0a0a0a] pb-20">
       <Navbar />
 
-      <div className="container mx-auto px-6 py-8 space-y-8">
+      <div className="container mx-auto px-4 py-8 space-y-10">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3"
-        >
-          <Shield className="h-8 w-8 text-secondary" />
-          <div>
-            <h1 className="font-display text-2xl font-bold text-foreground tracking-wider">
-              GOD MODE
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Admin Control Panel • {profile?.email}
-            </p>
-          </div>
-        </motion.div>
-
-        {/* ── Top row: controls ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Master Mic */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass p-5"
-          >
-            <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-              <Mic className="h-4 w-4 text-secondary" /> MASTER MIC
-            </h3>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setIsMicOn(!isMicOn)}
-              className={`w-full py-4 rounded-xl font-display text-sm font-bold tracking-wider transition-all ${
-                isMicOn
-                  ? "bg-secondary text-secondary-foreground neon-glow-crimson"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {isMicOn ? "🎙️ LIVE — Speaking to All" : "TAP TO GO LIVE"}
-            </motion.button>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <button className="glass text-[10px] font-bold py-2 rounded-lg text-secondary hover:bg-secondary/10 transition-all">
-                ⚠️ Send Warning
-              </button>
-              <button className="glass text-[10px] font-bold py-2 rounded-lg text-emerald-400 hover:bg-emerald-400/10 transition-all">
-                🎉 Congratulate
-              </button>
+        <div className="flex items-center justify-between border-b border-white/5 pb-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-secondary/10 rounded-2xl border border-secondary/20">
+              <Shield className="h-8 w-8 text-secondary" />
             </div>
-          </motion.div>
+            <div>
+              <h1 className="font-display text-3xl font-black text-foreground tracking-tighter italic uppercase">
+                GOD MODE
+              </h1>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em]">
+                Super Admin Control Panel
+              </p>
+            </div>
+          </div>
 
-          {/* Create Task */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="glass p-5"
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsMicOn(!isMicOn)}
+            className={`px-6 py-3 rounded-full font-display text-xs font-black flex items-center gap-2 transition-all ${
+              isMicOn
+                ? "bg-red-500 text-white animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.5)]"
+                : "bg-white/5 text-muted-foreground border border-white/10"
+            }`}
           >
-            <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-              <Plus className="h-4 w-4 text-primary" /> CREATE TASK
+            <Mic className="h-4 w-4" />{" "}
+            {isMicOn ? "🎙️ LIVE MIC: ON" : "ACTIVATE MIC"}
+          </motion.button>
+        </div>
+
+        {/* ── SECTION 1: CREATE GAME (Input) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 glass p-6 border-l-4 border-primary">
+            <h3 className="text-sm font-black text-foreground mb-4 flex items-center gap-2">
+              <Plus className="h-4 w-4 text-primary" /> OPEN NEW GAME TABLE
             </h3>
-            <div className="space-y-3">
-              <input
-                placeholder="Task name..."
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <select
                 value={taskName}
                 onChange={(e) => setTaskName(e.target.value)}
-                className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <div className="grid grid-cols-3 gap-2">
-                {(["Solo", "Team", "4-Player"] as const).map((type) => (
+                className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="" className="bg-black">
+                  Choose Game Category...
+                </option>
+                <option value="LUDO KING" className="bg-black">
+                  LUDO KING
+                </option>
+                <option value="BIKE RACE" className="bg-black">
+                  BIKE RACE
+                </option>
+                <option value="CAR RACE" className="bg-black">
+                  CAR RACE
+                </option>
+                <option value="CARD GAME" className="bg-black">
+                  CARD GAME
+                </option>
+                <option value="DANCE BATTLE" className="bg-black">
+                  DANCE BATTLE
+                </option>
+              </select>
+
+              <div className="flex bg-white/5 rounded-xl p-1 border border-white/10">
+                {["Solo", "Team"].map((t) => (
                   <button
-                    key={type}
-                    onClick={() => setTaskType(type)}
-                    className={`glass text-[10px] font-bold py-2 rounded-lg transition-all ${
-                      taskType === type
-                        ? "text-primary border-primary/30 bg-primary/10"
-                        : "text-muted-foreground hover:text-primary"
-                    }`}
+                    key={t}
+                    onClick={() => setTaskType(t as any)}
+                    className={`flex-1 py-2 rounded-lg text-[10px] font-black transition-all ${taskType === t ? "bg-primary text-black" : "text-muted-foreground"}`}
                   >
-                    {type}
+                    {t.toUpperCase()}
                   </button>
                 ))}
               </div>
-              <input
-                placeholder="Entry Fee (pts)"
-                type="number"
-                value={entryFee}
-                onChange={(e) => setEntryFee(e.target.value)}
-                className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <button
-                onClick={handleCreateBattle}
-                className="w-full py-2.5 rounded-lg font-display text-xs font-bold tracking-wider bg-primary text-primary-foreground hover:opacity-90 transition-all"
-              >
-                CREATE & SCHEDULE
-              </button>
-            </div>
-          </motion.div>
 
-          {/* Redeem Requests */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="glass p-5"
-          >
-            <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-secondary" /> REDEEM REQUESTS
-            </h3>
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-              {redeemRequests.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">
-                  No redeem requests.
-                </p>
-              )}
-              {redeemRequests.map((req) => (
-                <div key={req.id} className="glass p-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-2">
-                      {req.photoURL && (
-                        <img
-                          src={req.photoURL}
-                          alt=""
-                          className="w-6 h-6 rounded-full"
-                        />
-                      )}
-                      <p className="text-sm font-bold text-foreground">
-                        {req.displayName}
-                      </p>
-                    </div>
-                    <span
-                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                        req.status === "pending"
-                          ? "bg-amber-500/20 text-amber-400"
-                          : req.status === "approved"
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-destructive/20 text-destructive"
-                      }`}
-                    >
-                      {req.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    ₹{req.amount} → {req.upiId}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground/60">
-                    {req.email}
-                  </p>
-                  {req.status === "pending" && (
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={async () => {
-                          await approveRedeemRequest(req.id);
-                          toast.success(`₹${req.amount} approved`);
-                        }}
-                        className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all"
-                      >
-                        APPROVE
-                      </button>
-                      <button
-                        onClick={async () => {
-                          await rejectRedeemRequest(req.id);
-                          toast.info("Rejected & refunded");
-                        }}
-                        className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-destructive/20 text-destructive hover:bg-destructive/30 transition-all"
-                      >
-                        REJECT
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+              <div className="relative">
+                <input
+                  type="number"
+                  placeholder="Entry Fee"
+                  value={entryFee}
+                  onChange={(e) => setEntryFee(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none"
+                />
+                <button
+                  onClick={handleCreateBattle}
+                  className="absolute right-1 top-1 bottom-1 px-4 bg-primary text-black rounded-lg text-[10px] font-black"
+                >
+                  CREATE
+                </button>
+              </div>
             </div>
-          </motion.div>
+          </div>
+
+          <div className="glass p-6 border-l-4 border-secondary">
+            <h3 className="text-sm font-black text-foreground mb-4 flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-secondary" /> PENDING REDEEMS
+            </h3>
+            <p className="text-2xl font-black text-secondary">
+              {redeemRequests.length}
+            </p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-tighter">
+              Withdrawal Requests Waiting
+            </p>
+          </div>
         </div>
 
-        {/* ── Users Table ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="glass p-5"
-        >
-          <h3 className="font-display text-sm font-bold text-foreground mb-5 flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" /> ALL USERS (
+        {/* ── SECTION 2: CATEGORIZED GAME TABLES (The Main Fix) ── */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-2 border-l-4 border-secondary pl-4">
+            <h2 className="text-2xl font-black tracking-tighter uppercase italic text-foreground">
+              Live Game Arenas
+            </h2>
+            <span className="px-2 py-0.5 bg-secondary/20 text-secondary text-[10px] font-bold rounded">
+              REAL-TIME
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            {liveBattles.length === 0 ? (
+              <div className="col-span-full py-20 glass text-center border-dashed border-2 border-white/5">
+                <Gamepad2 className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+                <p className="text-muted-foreground italic">
+                  No active tables. Create one above to start!
+                </p>
+              </div>
+            ) : (
+              <AnimatePresence>
+                {liveBattles.map((battle) => (
+                  <motion.div
+                    key={battle.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="glass rounded-3xl overflow-hidden border border-white/10"
+                  >
+                    {/* Table Header: Category Name */}
+                    <div className="bg-gradient-to-r from-secondary/20 to-transparent p-5 flex justify-between items-center border-b border-white/5">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <LayoutGrid className="h-4 w-4 text-secondary" />
+                          <h3 className="text-xl font-black text-white italic">
+                            {battle.title}
+                          </h3>
+                        </div>
+                        <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest mt-1">
+                          ID: {battle.id.slice(-6)} • {battle.type} Arena
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-muted-foreground font-black uppercase">
+                          Winner Prize
+                        </p>
+                        <p className="text-2xl font-black text-primary leading-none">
+                          {battle.prize} PTS
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Table Content: Players in this specific game */}
+                    <div className="p-4 overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="text-[10px] text-muted-foreground uppercase tracking-tighter border-b border-white/5">
+                            <th className="pb-3 font-black">Participant</th>
+                            <th className="pb-3 font-black text-center">
+                              Votes
+                            </th>
+                            <th className="pb-3 font-black text-right">
+                              Declare Results
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(battle.players || {}).map(
+                            ([uid, player]) => (
+                              <tr
+                                key={uid}
+                                className="group hover:bg-white/[0.02] transition-colors border-b border-white/5"
+                              >
+                                <td className="py-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-secondary to-primary p-[1px]">
+                                      <div className="w-full h-full rounded-full bg-black flex items-center justify-center font-black text-xs text-white uppercase">
+                                        {player.name?.charAt(0)}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <p className="font-bold text-sm text-white leading-none mb-1">
+                                        {player.name}
+                                      </p>
+                                      <p className="text-[9px] text-muted-foreground uppercase tracking-tighter">
+                                        UID: {uid.slice(0, 8)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-4 text-center">
+                                  <span className="bg-white/5 px-3 py-1 rounded-full text-xs font-black text-secondary border border-white/10">
+                                    {player.votes || 0}
+                                  </span>
+                                </td>
+                                <td className="py-4 text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      onClick={() =>
+                                        handleReward(uid, player.name || "")
+                                      }
+                                      className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white transition-all"
+                                    >
+                                      <Gift className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleDeclareWinnerFromBattle(
+                                          battle.id,
+                                          uid,
+                                          battle.prize,
+                                        )
+                                      }
+                                      className="flex items-center gap-2 px-4 py-2 bg-primary text-black rounded-lg font-black text-[11px] shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:scale-105 active:scale-95 transition-all"
+                                    >
+                                      <Trophy className="h-3.5 w-3.5" /> WINNER
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ),
+                          )}
+                        </tbody>
+                      </table>
+
+                      {Object.keys(battle.players || {}).length === 0 && (
+                        <div className="py-12 text-center">
+                          <p className="text-xs text-muted-foreground italic opacity-50">
+                            This {battle.title} table is empty. Waiting for
+                            warriors...
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
+          </div>
+        </div>
+
+        {/* ── SECTION 3: ALL USERS QUICK LIST ── */}
+        <div className="glass p-6 opacity-60 hover:opacity-100 transition-opacity">
+          <h3 className="text-sm font-black text-foreground mb-6 flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" /> USER DIRECTORY (
             {allUsers.length})
           </h3>
-
-          {allUsers.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-6">
-              No users found in Firestore.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      User
-                    </th>
-                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">
-                      Email
-                    </th>
-                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">
-                      Balance
-                    </th>
-                    <th className="text-center py-2 px-3 text-muted-foreground font-medium">
-                      Status
-                    </th>
-                    <th className="text-center py-2 px-3 text-muted-foreground font-medium">
-                      Actions
-                    </th>
+          <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-muted-foreground border-b border-white/5 uppercase font-bold text-[9px]">
+                  <th className="pb-4 text-left">User Profile</th>
+                  <th className="pb-4 text-right">Points Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allUsers.map((u) => (
+                  <tr
+                    key={u.uid}
+                    className="border-b border-white/5 hover:bg-white/5"
+                  >
+                    <td className="py-3 flex items-center gap-3">
+                      <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-[8px] font-black">
+                        {u.displayName?.charAt(0)}
+                      </div>
+                      <span>{u.displayName || u.email}</span>
+                    </td>
+                    <td className="py-3 text-right font-black text-primary">
+                      {(u.balance || 0).toLocaleString()} pts
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {allUsers.map((u) => (
-                    <tr
-                      key={u.uid}
-                      className="border-b border-border/40 hover:bg-muted/10 transition-colors"
-                    >
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-2">
-                          {u.photoURL ? (
-                            <img
-                              src={u.photoURL}
-                              alt=""
-                              className="w-7 h-7 rounded-full border border-border"
-                            />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
-                              {u.displayName?.charAt(0)?.toUpperCase() || "?"}
-                            </div>
-                          )}
-                          <span className="font-medium text-foreground">
-                            {u.displayName || "—"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 text-muted-foreground">
-                        {u.email}
-                      </td>
-                      <td className="py-3 px-3 text-right font-display font-bold text-primary">
-                        {(u.balance ?? 0).toLocaleString()} pts
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        {u.battleStatus === "winner" ? (
-                          <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
-                            🏆 Winner
-                          </span>
-                        ) : (
-                          <span className="bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
-                            —
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() =>
-                              handleReward(u.uid, u.displayName || u.email)
-                            }
-                            title="Add 500 pts"
-                            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 transition-all"
-                          >
-                            <Gift className="h-3.5 w-3.5 text-emerald-400" />
-                          </motion.button>
-
-                          <motion.button
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() =>
-                              handleDeclareWinnerByUid(
-                                u.uid,
-                                u.displayName || u.email,
-                              )
-                            }
-                            disabled={declaringWinner === u.uid}
-                            title="Declare Winner (+100 pts)"
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-display text-[10px] font-bold tracking-wider
-                                       bg-primary/10 border border-primary/20 text-primary
-                                       hover:bg-primary hover:text-primary-foreground transition-all
-                                       disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Trophy className="h-3 w-3" />
-                            {declaringWinner === u.uid
-                              ? "..."
-                              : "Declare Winner"}
-                          </motion.button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </motion.div>
-
-        {/* ── Active Arenas Master Control ── */}
-        {liveBattles.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="glass p-5 border-t-2 border-primary/20"
-          >
-            <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-secondary animate-pulse" />
-              ACTIVE ARENAS ({liveBattles.length})
-            </h3>
-
-            <div className="grid grid-cols-1 gap-4">
-              {liveBattles.map((battle) => (
-                <div
-                  key={battle.id}
-                  className="bg-black/20 rounded-xl p-4 border border-white/5 shadow-inner"
-                >
-                  <div className="flex justify-between items-start mb-4 border-b border-white/5 pb-2">
-                    <div>
-                      <p className="text-sm font-black text-primary uppercase tracking-wider">
-                        {battle.title}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground italic">
-                        {battle.type} • Prize:{" "}
-                        <span className="text-secondary font-bold">
-                          {battle.prize} pts
-                        </span>
-                      </p>
-                    </div>
-                    <span className="text-[10px] bg-secondary/10 text-secondary px-2 py-0.5 rounded-full font-bold border border-secondary/20">
-                      {battle.status}
-                    </span>
-                  </div>
-
-                  <div className="space-y-3">
-                    {Object.entries(battle.players || {}).map(
-                      ([uid, player]) => (
-                        <div
-                          key={uid}
-                          className="flex items-center justify-between bg-white/5 p-3 rounded-lg hover:bg-white/10 transition-all"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="relative">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-[10px] font-bold">
-                                {(player.name || "P").charAt(0)}
-                              </div>
-                              <div className="absolute -top-1 -right-1 bg-red-500 text-[8px] px-1 rounded-full text-white font-black">
-                                {player.votes || 0}
-                              </div>
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-foreground leading-none">
-                                {player.name}
-                              </p>
-                              <p className="text-[9px] text-muted-foreground">
-                                {player.city || "Global Player"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleReward(uid, player.name)}
-                              className="p-1.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/40 transition-colors"
-                              title="Give Bonus"
-                            >
-                              <Gift className="h-3.5 w-3.5 text-emerald-400" />
-                            </button>
-
-                            <button
-                              onClick={() =>
-                                handleDeclareWinnerFromBattle(
-                                  battle.id,
-                                  uid,
-                                  battle.prize,
-                                )
-                              }
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary hover:bg-primary/80 text-black text-[10px] font-black transition-transform active:scale-95"
-                            >
-                              <Trophy className="h-3 w-3" /> WINNER
-                            </button>
-                          </div>
-                        </div>
-                      ),
-                    )}
-
-                    {Object.keys(battle.players || {}).length === 0 && (
-                      <p className="text-[10px] text-center text-muted-foreground py-2 italic">
-                        No warriors joined this battle yet...
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );

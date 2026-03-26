@@ -30,7 +30,7 @@ const Navbar = () => {
           <Link to="/pvp" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             PvP
           </Link>
-          <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+          <Link to="/leaderboard" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             Leaderboard
           </Link>
         </div>

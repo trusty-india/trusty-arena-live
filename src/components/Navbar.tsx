@@ -27,7 +27,7 @@ const Navbar = () => {
           <Link to="/battle/live" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             Live Arena
           </Link>
-          <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+          <Link to="/pvp" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             PvP
           </Link>
           <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">

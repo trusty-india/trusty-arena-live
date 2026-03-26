@@ -1,26 +1,43 @@
 import Navbar from "@/components/Navbar";
 import { motion } from "framer-motion";
-import { Shield, Mic, Zap, UserX, Gift, CreditCard, Plus, AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { Shield, Mic, Zap, UserX, Gift, CreditCard, Plus, AlertTriangle, Trophy } from "lucide-react";
+import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
+import { useAuth } from "@/contexts/AuthContext";
+import { addPointsToUser, declareWinner, createBattle, subscribeToBattles, Battle } from "@/lib/battleService";
 
-const livePlayers = [
-  { id: 1, name: "Rahul", city: "Delhi", points: 2450, status: "live" },
-  { id: 2, name: "Priya", city: "Mumbai", points: 3200, status: "live" },
-  { id: 3, name: "Ankit", city: "Bangalore", points: 1800, status: "live" },
-  { id: 4, name: "Sneha", city: "Jaipur", points: 2900, status: "warned" },
-];
-
-const redeemRequests = [
-  { id: 1, user: "Vikram", amount: 500, upi: "vikram@upi", status: "pending" },
-  { id: 2, user: "Meera", amount: 1200, upi: "meera@upi", status: "pending" },
-  { id: 3, user: "Arjun", amount: 300, upi: "arjun@upi", status: "approved" },
-];
+interface RedeemRequest {
+  id: string;
+  user: string;
+  amount: number;
+  upi: string;
+  status: string;
+}
 
 const AdminDashboard = () => {
+  const { profile } = useAuth();
   const [isMicOn, setIsMicOn] = useState(false);
+  const [liveBattles, setLiveBattles] = useState<Battle[]>([]);
+  const [redeemRequests] = useState<RedeemRequest[]>([
+    { id: "1", user: "Vikram", amount: 500, upi: "vikram@upi", status: "pending" },
+    { id: "2", user: "Meera", amount: 1200, upi: "meera@upi", status: "pending" },
+    { id: "3", user: "Arjun", amount: 300, upi: "arjun@upi", status: "approved" },
+  ]);
 
-  const handleReward = (name: string) => {
+  // Task creation state
+  const [taskName, setTaskName] = useState("");
+  const [taskType, setTaskType] = useState<"Solo" | "Team" | "4-Player">("Solo");
+  const [entryFee, setEntryFee] = useState("");
+
+  useEffect(() => {
+    const unsub = subscribeToBattles((battles) => {
+      setLiveBattles(battles.filter((b) => b.status === "live" || b.status === "open"));
+    });
+    return unsub;
+  }, []);
+
+  const handleReward = async (uid: string, name: string) => {
+    await addPointsToUser(uid, 500);
     confetti({
       particleCount: 100,
       spread: 70,
@@ -28,6 +45,28 @@ const AdminDashboard = () => {
       colors: ["#3B82F6", "#EF4444", "#10B981", "#F59E0B"],
     });
     alert(`🎉 500 Points added to ${name}!`);
+  };
+
+  const handleCreateBattle = async () => {
+    if (!taskName || !entryFee) return;
+    const fee = parseInt(entryFee);
+    await createBattle({
+      title: taskName.toUpperCase(),
+      type: taskType,
+      entryFee: fee,
+      prize: fee * 4,
+      players: {},
+      maxPlayers: taskType === "Solo" ? 20 : taskType === "Team" ? 8 : 4,
+      status: "open",
+    });
+    setTaskName("");
+    setEntryFee("");
+    alert("✅ Battle created!");
+  };
+
+  const handleDeclareWinner = async (battleId: string, winnerUid: string, prize: number) => {
+    await declareWinner(battleId, winnerUid, prize);
+    confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
   };
 
   return (
@@ -44,7 +83,7 @@ const AdminDashboard = () => {
           <Shield className="h-8 w-8 text-secondary" />
           <div>
             <h1 className="font-display text-2xl font-bold text-foreground tracking-wider">GOD MODE</h1>
-            <p className="text-xs text-muted-foreground">Admin Control Panel</p>
+            <p className="text-xs text-muted-foreground">Admin Control Panel • {profile?.email}</p>
           </div>
         </motion.div>
 
@@ -94,11 +133,21 @@ const AdminDashboard = () => {
               <div className="space-y-3">
                 <input
                   placeholder="Task name..."
+                  value={taskName}
+                  onChange={(e) => setTaskName(e.target.value)}
                   className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
                 <div className="grid grid-cols-3 gap-2">
-                  {["Solo", "Team", "4-Player"].map((type) => (
-                    <button key={type} className="glass text-[10px] font-bold py-2 rounded-lg text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
+                  {(["Solo", "Team", "4-Player"] as const).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setTaskType(type)}
+                      className={`glass text-[10px] font-bold py-2 rounded-lg transition-all ${
+                        taskType === type
+                          ? "text-primary border-primary/30 bg-primary/10"
+                          : "text-muted-foreground hover:text-primary"
+                      }`}
+                    >
                       {type}
                     </button>
                   ))}
@@ -106,16 +155,21 @@ const AdminDashboard = () => {
                 <input
                   placeholder="Entry Fee (pts)"
                   type="number"
+                  value={entryFee}
+                  onChange={(e) => setEntryFee(e.target.value)}
                   className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
-                <button className="w-full py-2.5 rounded-lg font-display text-xs font-bold tracking-wider bg-primary text-primary-foreground hover:opacity-90 transition-all">
+                <button
+                  onClick={handleCreateBattle}
+                  className="w-full py-2.5 rounded-lg font-display text-xs font-bold tracking-wider bg-primary text-primary-foreground hover:opacity-90 transition-all"
+                >
                   CREATE & SCHEDULE
                 </button>
               </div>
             </motion.div>
           </div>
 
-          {/* Middle: Live Players */}
+          {/* Middle: Live Battles */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -123,46 +177,45 @@ const AdminDashboard = () => {
             className="glass p-5"
           >
             <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" /> LIVE PLAYERS
+              <Zap className="h-4 w-4 text-primary" /> LIVE BATTLES ({liveBattles.length})
             </h3>
             <div className="space-y-3">
-              {livePlayers.map((player) => (
-                <div
-                  key={player.id}
-                  className={`glass p-3 flex items-center justify-between ${
-                    player.status === "warned" ? "border-destructive/50" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="text-xs font-display font-bold text-primary">{player.name[0]}</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">{player.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{player.city} • {player.points} pts</p>
-                    </div>
+              {liveBattles.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">No live battles. Create one!</p>
+              )}
+              {liveBattles.map((battle) => (
+                <div key={battle.id} className="glass p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-foreground">{battle.title}</p>
+                    <span className="text-[10px] font-bold text-secondary uppercase">{battle.status}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => handleReward(player.name)}
-                      className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 transition-all"
-                      title="Add Points"
-                    >
-                      <Gift className="h-3.5 w-3.5 text-emerald-400" />
-                    </button>
-                    <button
-                      className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 transition-all"
-                      title="Warn Player"
-                    >
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-                    </button>
-                    <button
-                      className="p-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 transition-all"
-                      title="Kick Player"
-                    >
-                      <UserX className="h-3.5 w-3.5 text-destructive" />
-                    </button>
-                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {battle.type} • {Object.keys(battle.players).length}/{battle.maxPlayers} players • Prize: {battle.prize} pts
+                  </p>
+                  {Object.entries(battle.players).map(([uid, player]) => (
+                    <div key={uid} className="flex items-center justify-between py-1">
+                      <span className="text-xs text-foreground">{player.name} ({player.votes} votes)</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleReward(uid, player.name)}
+                          className="p-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20"
+                          title="Add 500 pts"
+                        >
+                          <Gift className="h-3 w-3 text-emerald-400" />
+                        </button>
+                        <button
+                          onClick={() => handleDeclareWinner(battle.id, uid, battle.prize)}
+                          className="p-1 rounded bg-primary/10 hover:bg-primary/20"
+                          title="Declare Winner"
+                        >
+                          <Trophy className="h-3 w-3 text-primary" />
+                        </button>
+                        <button className="p-1 rounded bg-destructive/10 hover:bg-destructive/20" title="Kick">
+                          <UserX className="h-3 w-3 text-destructive" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>

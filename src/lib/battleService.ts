@@ -20,6 +20,7 @@ export interface Battle {
   maxPlayers: number;
   status: "live" | "open" | "upcoming" | "finished";
   winnerId?: string;
+  isSpecial?: boolean;
   createdAt: Timestamp;
 }
 
@@ -37,6 +38,18 @@ export const subscribeToBattles = (cb: (battles: Battle[]) => void) => {
   return onSnapshot(collection(db, "battles"), (snap) => {
     const battles = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Battle);
     cb(battles);
+  });
+};
+
+export const joinBattle = async (
+  battleId: string,
+  uid: string,
+  name: string,
+  city = "India"
+) => {
+  const battleRef = doc(db, "battles", battleId);
+  await updateDoc(battleRef, {
+    [`players.${uid}`]: { uid, name, city, votes: 0 },
   });
 };
 

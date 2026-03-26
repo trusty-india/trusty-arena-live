@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Mic, MicOff, AlertTriangle } from "lucide-react";
+import { Mic, MicOff, AlertTriangle, ThumbsUp, Trophy } from "lucide-react";
 import { useState } from "react";
 
 interface PlayerVideoProps {
@@ -9,10 +9,12 @@ interface PlayerVideoProps {
   totalVotes: number;
   color: "blue" | "red";
   isWarned?: boolean;
+  isWinner?: boolean;
   index: number;
+  onVote?: () => void;
 }
 
-const PlayerVideo = ({ name, city, votes, totalVotes, color, isWarned, index }: PlayerVideoProps) => {
+const PlayerVideo = ({ name, city, votes, totalVotes, color, isWarned, isWinner, index, onVote }: PlayerVideoProps) => {
   const [muted] = useState(false);
   const percent = totalVotes > 0 ? (votes / totalVotes) * 100 : 0;
   const isBlue = color === "blue";
@@ -24,7 +26,7 @@ const PlayerVideo = ({ name, city, votes, totalVotes, color, isWarned, index }: 
       transition={{ delay: index * 0.15 }}
       className={`glass relative overflow-hidden ${
         isWarned ? "animate-warning-flash animate-shake border-2 border-destructive" : ""
-      }`}
+      } ${isWinner ? "border-2 border-primary neon-glow-blue" : ""}`}
     >
       {/* Simulated video area */}
       <div className="aspect-video bg-muted/50 relative flex items-center justify-center">
@@ -33,6 +35,17 @@ const PlayerVideo = ({ name, city, votes, totalVotes, color, isWarned, index }: 
         }`}>
           {name.charAt(0)}
         </div>
+
+        {/* Winner crown */}
+        {isWinner && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute top-2 left-1/2 -translate-x-1/2"
+          >
+            <Trophy className="h-8 w-8 text-primary drop-shadow-lg" />
+          </motion.div>
+        )}
 
         {/* Mic indicator */}
         <div className="absolute top-2 right-2">
@@ -68,9 +81,22 @@ const PlayerVideo = ({ name, city, votes, totalVotes, color, isWarned, index }: 
             <p className="text-sm font-bold text-foreground">{name}</p>
             <p className="text-[10px] text-muted-foreground">{city}</p>
           </div>
-          <span className={`text-xs font-display font-bold ${isBlue ? "text-primary" : "text-secondary"}`}>
-            {votes} votes
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-display font-bold ${isBlue ? "text-primary" : "text-secondary"}`}>
+              {votes} votes
+            </span>
+            {onVote && (
+              <motion.button
+                whileTap={{ scale: 0.85 }}
+                onClick={onVote}
+                className={`p-1.5 rounded-lg transition-all ${
+                  isBlue ? "bg-primary/10 hover:bg-primary/20" : "bg-secondary/10 hover:bg-secondary/20"
+                }`}
+              >
+                <ThumbsUp className={`h-3.5 w-3.5 ${isBlue ? "text-primary" : "text-secondary"}`} />
+              </motion.button>
+            )}
+          </div>
         </div>
 
         {/* Voting progress bar */}
@@ -78,7 +104,7 @@ const PlayerVideo = ({ name, city, votes, totalVotes, color, isWarned, index }: 
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${percent}%` }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
             className={`h-full rounded-full ${isBlue ? "gradient-blue" : "gradient-crimson"}`}
           />
         </div>

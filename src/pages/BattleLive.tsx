@@ -4,17 +4,56 @@ import LiveNotifications from "@/components/LiveNotification";
 import PTTButton from "@/components/PTTButton";
 import { motion } from "framer-motion";
 import { MessageSquare, Volume2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { subscribeToBattle, voteForPlayer, Battle } from "@/lib/battleService";
+import confetti from "canvas-confetti";
+import { useAuth } from "@/contexts/AuthContext";
 
-const players = [
+// Demo battle ID — replace with dynamic routing later
+const DEMO_BATTLE_ID = "demo-battle-1";
+
+const fallbackPlayers = [
   { name: "Rahul", city: "Delhi", votes: 342, color: "blue" as const },
   { name: "Priya", city: "Mumbai", votes: 289, color: "red" as const },
   { name: "Ankit", city: "Bangalore", votes: 198, color: "blue" as const },
   { name: "Sneha", city: "Jaipur", votes: 271, color: "red" as const },
 ];
 
-const totalVotes = players.reduce((sum, p) => sum + p.votes, 0);
-
 const BattleLive = () => {
+  const { profile } = useAuth();
+  const [battle, setBattle] = useState<Battle | null>(null);
+  const [showWinConfetti, setShowWinConfetti] = useState(false);
+
+  useEffect(() => {
+    const unsub = subscribeToBattle(DEMO_BATTLE_ID, (b) => {
+      if (b?.winnerId && b.winnerId === profile?.uid && !showWinConfetti) {
+        setShowWinConfetti(true);
+        confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ["#3B82F6", "#EF4444", "#10B981", "#F59E0B"] });
+      }
+      setBattle(b);
+    });
+    return unsub;
+  }, [profile?.uid, showWinConfetti]);
+
+  // Derive players from Firestore or use fallback
+  const players = battle
+    ? Object.entries(battle.players).map(([uid, p], i) => ({
+        name: p.name,
+        city: p.city,
+        votes: p.votes,
+        color: (i % 2 === 0 ? "blue" : "red") as "blue" | "red",
+        uid,
+      }))
+    : fallbackPlayers.map((p, i) => ({ ...p, uid: `fallback-${i}` }));
+
+  const totalVotes = players.reduce((sum, p) => sum + p.votes, 0);
+
+  const handleVote = async (uid: string) => {
+    if (battle) {
+      await voteForPlayer(battle.id, uid);
+    }
+  };
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -30,9 +69,13 @@ const BattleLive = () => {
           <div>
             <div className="flex items-center gap-3">
               <div className="w-3 h-3 rounded-full bg-secondary animate-pulse-neon" />
-              <h1 className="font-display text-2xl font-bold text-foreground tracking-wider">SPEED ROUND #47</h1>
+              <h1 className="font-display text-2xl font-bold text-foreground tracking-wider">
+                {battle?.title ?? "SPEED ROUND #47"}
+              </h1>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">4-Player Battle • Entry: 50 pts • Prize: 180 pts</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {battle ? `${battle.type} Battle • Entry: ${battle.entryFee} pts • Prize: ${battle.prize} pts` : "4-Player Battle • Entry: 50 pts • Prize: 180 pts"}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="glass px-3 py-1.5 rounded-full flex items-center gap-2">
@@ -45,19 +88,37 @@ const BattleLive = () => {
           </div>
         </motion.div>
 
+        {/* Winner Banner */}
+        {battle?.winnerId && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-strong p-4 mb-6 text-center border border-primary/30"
+          >
+            <p className="font-display text-lg font-bold text-primary">
+              🏆 {players.find(p => p.uid === battle.winnerId)?.name ?? "Winner"} WINS! +{battle.prize} pts
+            </p>
+          </motion.div>
+        )}
+
         {/* 4-Player Video Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {players.map((player, i) => (
             <PlayerVideo
-              key={player.name}
-              {...player}
+              key={player.uid}
+              name={player.name}
+              city={player.city}
+              votes={player.votes}
+              color={player.color}
               totalVotes={totalVotes}
               index={i}
+              onVote={() => handleVote(player.uid)}
+              isWinner={battle?.winnerId === player.uid}
             />
           ))}
         </div>
 
-        {/* Chat section placeholder */}
+        {/* Chat section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

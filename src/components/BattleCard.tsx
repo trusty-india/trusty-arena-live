@@ -61,7 +61,7 @@ const BattleCard = ({
         profile.displayName || profile.email || "Player",
       );
       toast.success(`Joined ${title}!`);
-      navigate(`/battle/live`);
+      navigate(`/battle/live?id=${id}`);
     } catch {
       toast.error("Could not join battle.");
     } finally {

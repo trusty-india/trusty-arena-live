@@ -2,37 +2,120 @@ import Navbar from "@/components/Navbar";
 import VideoArena from "@/components/VideoArena";
 import LiveNotifications from "@/components/LiveNotification";
 import PTTButton from "@/components/PTTButton";
-import { motion } from "framer-motion";
-import { MessageSquare, Volume2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { subscribeToBattle, Battle } from "@/lib/battleService";
+import { motion, AnimatePresence } from "framer-motion";
+import { MessageSquare, Volume2, Trophy } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { subscribeToBattle, Battle, clearWinnerStatus } from "@/lib/battleService";
 import confetti from "canvas-confetti";
 import { useAuth } from "@/contexts/AuthContext";
+import { doc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const DEMO_BATTLE_ID = "demo-battle-1";
 
 const BattleLive = () => {
   const { profile } = useAuth();
   const [battle, setBattle] = useState<Battle | null>(null);
-  const [showWinConfetti, setShowWinConfetti] = useState(false);
+  const [showVictory, setShowVictory] = useState(false);
+  const confettiFired = useRef(false);
 
+  // Subscribe to the battle document
   useEffect(() => {
     const unsub = subscribeToBattle(DEMO_BATTLE_ID, (b) => {
-      if (b?.winnerId && b.winnerId === profile?.uid && !showWinConfetti) {
-        setShowWinConfetti(true);
-        confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ["#3B82F6", "#EF4444", "#10B981", "#F59E0B"] });
-      }
       setBattle(b);
     });
     return unsub;
-  }, [profile?.uid, showWinConfetti]);
+  }, []);
+
+  // ── Winner detection: watch current user's Firestore doc for battleStatus ──
+  useEffect(() => {
+    if (!profile?.uid) return;
+
+    const unsub = onSnapshot(doc(db, "users", profile.uid), (snap) => {
+      const data = snap.data();
+      if (data?.battleStatus === "winner" && !confettiFired.current) {
+        confettiFired.current = true;
+        setShowVictory(true);
+
+        // Multi-burst confetti celebration
+        const fire = (particleRatio: number, opts: confetti.Options) => {
+          confetti({
+            ...opts,
+            origin: { y: 0.6 },
+            particleCount: Math.floor(300 * particleRatio),
+            colors: ["#3B82F6", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6"],
+          });
+        };
+        fire(0.25, { spread: 26, startVelocity: 55 });
+        fire(0.2,  { spread: 60 });
+        fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+        fire(0.1,  { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+        fire(0.1,  { spread: 120, startVelocity: 45 });
+      }
+    });
+    return unsub;
+  }, [profile?.uid]);
+
+  const handleDismissVictory = async () => {
+    setShowVictory(false);
+    confettiFired.current = false;
+    if (profile?.uid) await clearWinnerStatus(profile.uid);
+  };
 
   const userName = profile?.displayName || profile?.email?.split("@")[0] || "Player";
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative">
       <Navbar />
       <LiveNotifications />
+
+      {/* ── VICTORY Full-Screen Overlay ── */}
+      <AnimatePresence>
+        {showVictory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.5, rotate: -10 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+              className="text-center space-y-6 px-8"
+            >
+              <motion.div
+                animate={{ y: [0, -12, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Trophy className="h-28 w-28 text-amber-400 mx-auto drop-shadow-lg" />
+              </motion.div>
+
+              <div className="space-y-2">
+                <h1 className="font-display text-6xl font-black tracking-widest text-amber-400 drop-shadow-lg">
+                  VICTORY!
+                </h1>
+                <p className="text-xl text-foreground font-semibold">
+                  {userName}, you won! +100 pts added
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Your balance has been updated
+                </p>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleDismissVictory}
+                className="px-10 py-4 rounded-2xl font-display text-sm font-bold tracking-widest
+                           bg-amber-400 text-black hover:bg-amber-300 transition-all shadow-xl"
+              >
+                CLAIM VICTORY 🏆
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="container mx-auto px-6 py-8">
         {/* Battle header */}
@@ -65,20 +148,7 @@ const BattleLive = () => {
           </div>
         </motion.div>
 
-        {/* Winner Banner */}
-        {battle?.winnerId && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-strong p-4 mb-6 text-center border border-primary/30"
-          >
-            <p className="font-display text-lg font-bold text-primary">
-              🏆 WINNER! +{battle.prize} pts
-            </p>
-          </motion.div>
-        )}
-
-        {/* Agora Video Arena — 2x2 grid with live video */}
+        {/* Agora Video Arena — 2×2 live grid */}
         <div className="mb-8">
           <VideoArena userName={userName} />
         </div>

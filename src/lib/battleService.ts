@@ -98,3 +98,32 @@ export const createBattle = async (battle: Omit<Battle, "id" | "createdAt">) => 
   await setDoc(ref, { ...battle, createdAt: Timestamp.now() });
   return ref.id;
 };
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL: string;
+  balance: number;
+  battleStatus?: string;
+}
+
+export const subscribeToAllUsers = (cb: (users: UserProfile[]) => void) => {
+  return onSnapshot(collection(db, "users"), (snap) => {
+    const users = snap.docs.map((d) => d.data() as UserProfile);
+    cb(users);
+  });
+};
+
+export const declareWinnerByUid = async (uid: string) => {
+  const userRef = doc(db, "users", uid);
+  await updateDoc(userRef, {
+    balance: increment(100),
+    battleStatus: "winner",
+  });
+};
+
+export const clearWinnerStatus = async (uid: string) => {
+  const userRef = doc(db, "users", uid);
+  await updateDoc(userRef, { battleStatus: null });
+};

@@ -22,11 +22,10 @@ interface VideoArenaProps {
   userName: string;
 }
 
-const WaitingCard = ({ index }: { index: number }) => (
+const WaitingCard = ({ slotNumber }: { slotNumber: number }) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
-    transition={{ delay: index * 0.1 }}
     className="glass relative overflow-hidden rounded-xl"
   >
     <div className="aspect-video flex flex-col items-center justify-center gap-3 bg-muted/20">
@@ -45,7 +44,7 @@ const WaitingCard = ({ index }: { index: number }) => (
       </div>
     </div>
     <div className="px-4 py-2">
-      <p className="text-[10px] text-muted-foreground">Slot {index + 1}</p>
+      <p className="text-[10px] text-muted-foreground">Slot {slotNumber}</p>
     </div>
   </motion.div>
 );
@@ -54,22 +53,33 @@ const ArenaInner = ({ userName }: { userName: string }) => {
   const navigate = useNavigate();
   const [audioMuted, setAudioMuted] = useState(false);
   const [videoOff, setVideoOff] = useState(false);
+  const [joining, setJoining] = useState(true);
 
-  const { localMicrophoneTrack, isLoading: micLoading } = useLocalMicrophoneTrack(!audioMuted);
-  const { localCameraTrack, isLoading: camLoading } = useLocalCameraTrack(!videoOff);
+  // Always create both tracks so they are always published
+  const { localMicrophoneTrack, isLoading: micLoading } = useLocalMicrophoneTrack();
+  const { localCameraTrack, isLoading: camLoading } = useLocalCameraTrack();
 
-  useJoin({ appid: APP_ID, channel: CHANNEL, token: null });
+  // Join the fixed channel — all users join the same 'trusty-battle'
+  useJoin(
+    { appid: APP_ID, channel: CHANNEL, token: null },
+    true,
+  );
+
+  // Publish both tracks so remote users can see/hear this user
   usePublish([localMicrophoneTrack, localCameraTrack]);
 
+  // Live list of everyone else in the channel
   const remoteUsers = useRemoteUsers();
 
   const isLoading = micLoading || camLoading;
 
-  const handleMuteAudio = () => {
+  const handleMuteAudio = async () => {
+    await localMicrophoneTrack?.setEnabled(audioMuted); // if currently muted → enable; if enabled → disable
     setAudioMuted((prev) => !prev);
   };
 
-  const handleStopVideo = () => {
+  const handleStopVideo = async () => {
+    await localCameraTrack?.setEnabled(videoOff);
     setVideoOff((prev) => !prev);
   };
 
@@ -79,12 +89,9 @@ const ArenaInner = ({ userName }: { userName: string }) => {
     navigate("/");
   };
 
-  const slots = [
-    { type: "local" as const },
-    ...remoteUsers.slice(0, 3).map((u) => ({ type: "remote" as const, user: u })),
-  ];
-
-  const emptySlots = Math.max(0, 4 - slots.length);
+  // Total occupied slots (local = 1, remotes up to 3)
+  const remoteSlots = remoteUsers.slice(0, 3);
+  const emptyCount = Math.max(0, 3 - remoteSlots.length); // remaining of the 3 remote slots
 
   return (
     <div className="space-y-4">
@@ -99,9 +106,10 @@ const ArenaInner = ({ userName }: { userName: string }) => {
         </motion.div>
       )}
 
-      {/* 2x2 Video Grid */}
+      {/* 2×2 Video Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Local player */}
+
+        {/* ── Slot 1: Local player (YOU) ── */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -112,7 +120,7 @@ const ArenaInner = ({ userName }: { userName: string }) => {
               <LocalVideoTrack
                 track={localCameraTrack}
                 play
-                className="w-full h-full object-cover"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
@@ -122,32 +130,30 @@ const ArenaInner = ({ userName }: { userName: string }) => {
               </div>
             )}
 
-            {/* YOU label */}
+            {/* YOU badge */}
             <div className="absolute top-2 left-2 flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-[10px] font-bold text-foreground bg-black/50 px-1.5 py-0.5 rounded">YOU</span>
+              <span className="text-[10px] font-bold text-foreground bg-black/60 px-1.5 py-0.5 rounded">YOU</span>
             </div>
 
             {/* Mic indicator */}
             <div className="absolute top-2 right-2">
               {audioMuted
                 ? <MicOff className="h-4 w-4 text-destructive drop-shadow" />
-                : <Mic className="h-4 w-4 text-primary drop-shadow" />
-              }
+                : <Mic className="h-4 w-4 text-primary drop-shadow" />}
             </div>
           </div>
 
-          {/* Name bar */}
           <div className="px-4 py-2 flex items-center justify-between">
             <p className="text-sm font-bold text-foreground">{userName}</p>
             <span className="text-[10px] text-primary font-display font-bold tracking-wider">PLAYER 1</span>
           </div>
         </motion.div>
 
-        {/* Remote players */}
-        {remoteUsers.slice(0, 3).map((user, i) => (
+        {/* ── Slots 2-4: Remote players ── */}
+        {remoteSlots.map((remoteUser, i) => (
           <motion.div
-            key={user.uid}
+            key={remoteUser.uid}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: (i + 1) * 0.1 }}
@@ -155,19 +161,16 @@ const ArenaInner = ({ userName }: { userName: string }) => {
           >
             <div className="aspect-video bg-muted/30 relative">
               <RemoteUser
-                user={user}
+                user={remoteUser}
                 playVideo
                 playAudio
-                className="w-full h-full object-cover"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
-
-              {/* Live label */}
               <div className="absolute top-2 left-2 flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-secondary animate-pulse-neon" />
-                <span className="text-[10px] font-bold text-foreground bg-black/50 px-1.5 py-0.5 rounded">LIVE</span>
+                <span className="text-[10px] font-bold text-foreground bg-black/60 px-1.5 py-0.5 rounded">LIVE</span>
               </div>
             </div>
-
             <div className="px-4 py-2 flex items-center justify-between">
               <p className="text-sm font-bold text-foreground">Player {i + 2}</p>
               <span className="text-[10px] text-secondary font-display font-bold tracking-wider">PLAYER {i + 2}</span>
@@ -175,13 +178,13 @@ const ArenaInner = ({ userName }: { userName: string }) => {
           </motion.div>
         ))}
 
-        {/* Empty waiting slots */}
-        {Array.from({ length: emptySlots }).map((_, i) => (
-          <WaitingCard key={`empty-${i}`} index={slots.length + i} />
+        {/* ── Empty waiting slots ── */}
+        {Array.from({ length: emptyCount }).map((_, i) => (
+          <WaitingCard key={`waiting-${i}`} slotNumber={remoteSlots.length + i + 2} />
         ))}
       </div>
 
-      {/* Control Bar */}
+      {/* ── Control Bar ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -235,12 +238,10 @@ const ArenaInner = ({ userName }: { userName: string }) => {
   );
 };
 
-const VideoArena = ({ userName }: VideoArenaProps) => {
-  return (
-    <AgoraRTCProvider client={client}>
-      <ArenaInner userName={userName} />
-    </AgoraRTCProvider>
-  );
-};
+const VideoArena = ({ userName }: VideoArenaProps) => (
+  <AgoraRTCProvider client={client}>
+    <ArenaInner userName={userName} />
+  </AgoraRTCProvider>
+);
 
 export default VideoArena;

@@ -1,10 +1,19 @@
 import Navbar from "@/components/Navbar";
 import { motion } from "framer-motion";
-import { Shield, Mic, Zap, UserX, Gift, CreditCard, Plus, AlertTriangle, Trophy } from "lucide-react";
+import { Shield, Mic, Zap, UserX, Gift, CreditCard, Plus, Trophy, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useAuth } from "@/contexts/AuthContext";
-import { addPointsToUser, declareWinner, createBattle, subscribeToBattles, Battle } from "@/lib/battleService";
+import {
+  addPointsToUser,
+  declareWinner,
+  createBattle,
+  subscribeToBattles,
+  Battle,
+  subscribeToAllUsers,
+  declareWinnerByUid,
+  UserProfile,
+} from "@/lib/battleService";
 import { subscribeToAllRedeemRequests, approveRedeemRequest, rejectRedeemRequest, RedeemRequest } from "@/lib/redeemService";
 import { toast } from "sonner";
 
@@ -13,8 +22,9 @@ const AdminDashboard = () => {
   const [isMicOn, setIsMicOn] = useState(false);
   const [liveBattles, setLiveBattles] = useState<Battle[]>([]);
   const [redeemRequests, setRedeemRequests] = useState<RedeemRequest[]>([]);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [declaringWinner, setDeclaringWinner] = useState<string | null>(null);
 
-  // Task creation state
   const [taskName, setTaskName] = useState("");
   const [taskType, setTaskType] = useState<"Solo" | "Team" | "4-Player">("Solo");
   const [entryFee, setEntryFee] = useState("");
@@ -31,15 +41,15 @@ const AdminDashboard = () => {
     return unsub;
   }, []);
 
+  useEffect(() => {
+    const unsub = subscribeToAllUsers(setAllUsers);
+    return unsub;
+  }, []);
+
   const handleReward = async (uid: string, name: string) => {
     await addPointsToUser(uid, 500);
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ["#3B82F6", "#EF4444", "#10B981", "#F59E0B"],
-    });
-    alert(`🎉 500 Points added to ${name}!`);
+    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 }, colors: ["#3B82F6", "#EF4444", "#10B981", "#F59E0B"] });
+    toast.success(`🎉 500 pts added to ${name}!`);
   };
 
   const handleCreateBattle = async () => {
@@ -56,24 +66,37 @@ const AdminDashboard = () => {
     });
     setTaskName("");
     setEntryFee("");
-    alert("✅ Battle created!");
+    toast.success("✅ Battle created!");
   };
 
-  const handleDeclareWinner = async (battleId: string, winnerUid: string, prize: number) => {
+  const handleDeclareWinnerFromBattle = async (battleId: string, winnerUid: string, prize: number) => {
     await declareWinner(battleId, winnerUid, prize);
     confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } });
+  };
+
+  const handleDeclareWinnerByUid = async (uid: string, name: string) => {
+    setDeclaringWinner(uid);
+    try {
+      await declareWinnerByUid(uid);
+      confetti({ particleCount: 200, spread: 120, origin: { y: 0.4 }, colors: ["#3B82F6", "#F59E0B", "#10B981"] });
+      toast.success(`🏆 ${name} declared winner! +100 pts`);
+    } catch {
+      toast.error("Failed to declare winner");
+    } finally {
+      setDeclaringWinner(null);
+    }
   };
 
   return (
     <div className="min-h-screen">
       <Navbar />
 
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-6 py-8 space-y-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3 mb-8"
+          className="flex items-center gap-3"
         >
           <Shield className="h-8 w-8 text-secondary" />
           <div>
@@ -82,89 +105,87 @@ const AdminDashboard = () => {
           </div>
         </motion.div>
 
+        {/* ── Top row: controls ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Task Controller & Mic */}
-          <div className="lg:col-span-1 space-y-4">
-            {/* Master Mic */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass p-5"
+          {/* Master Mic */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass p-5"
+          >
+            <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+              <Mic className="h-4 w-4 text-secondary" /> MASTER MIC
+            </h3>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setIsMicOn(!isMicOn)}
+              className={`w-full py-4 rounded-xl font-display text-sm font-bold tracking-wider transition-all ${
+                isMicOn
+                  ? "bg-secondary text-secondary-foreground neon-glow-crimson"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
             >
-              <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-                <Mic className="h-4 w-4 text-secondary" /> MASTER MIC
-              </h3>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsMicOn(!isMicOn)}
-                className={`w-full py-4 rounded-xl font-display text-sm font-bold tracking-wider transition-all ${
-                  isMicOn
-                    ? "bg-secondary text-secondary-foreground neon-glow-crimson"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
+              {isMicOn ? "🎙️ LIVE — Speaking to All" : "TAP TO GO LIVE"}
+            </motion.button>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button className="glass text-[10px] font-bold py-2 rounded-lg text-secondary hover:bg-secondary/10 transition-all">
+                ⚠️ Send Warning
+              </button>
+              <button className="glass text-[10px] font-bold py-2 rounded-lg text-emerald-400 hover:bg-emerald-400/10 transition-all">
+                🎉 Congratulate
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Create Task */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="glass p-5"
+          >
+            <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+              <Plus className="h-4 w-4 text-primary" /> CREATE TASK
+            </h3>
+            <div className="space-y-3">
+              <input
+                placeholder="Task name..."
+                value={taskName}
+                onChange={(e) => setTaskName(e.target.value)}
+                className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <div className="grid grid-cols-3 gap-2">
+                {(["Solo", "Team", "4-Player"] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setTaskType(type)}
+                    className={`glass text-[10px] font-bold py-2 rounded-lg transition-all ${
+                      taskType === type
+                        ? "text-primary border-primary/30 bg-primary/10"
+                        : "text-muted-foreground hover:text-primary"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+              <input
+                placeholder="Entry Fee (pts)"
+                type="number"
+                value={entryFee}
+                onChange={(e) => setEntryFee(e.target.value)}
+                className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button
+                onClick={handleCreateBattle}
+                className="w-full py-2.5 rounded-lg font-display text-xs font-bold tracking-wider bg-primary text-primary-foreground hover:opacity-90 transition-all"
               >
-                {isMicOn ? "🎙️ LIVE — Speaking to All" : "TAP TO GO LIVE"}
-              </motion.button>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button className="glass text-[10px] font-bold py-2 rounded-lg text-secondary hover:bg-secondary/10 transition-all">
-                  ⚠️ Send Warning
-                </button>
-                <button className="glass text-[10px] font-bold py-2 rounded-lg text-emerald-400 hover:bg-emerald-400/10 transition-all">
-                  🎉 Congratulate
-                </button>
-              </div>
-            </motion.div>
+                CREATE & SCHEDULE
+              </button>
+            </div>
+          </motion.div>
 
-            {/* Create Task */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="glass p-5"
-            >
-              <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-                <Plus className="h-4 w-4 text-primary" /> CREATE TASK
-              </h3>
-              <div className="space-y-3">
-                <input
-                  placeholder="Task name..."
-                  value={taskName}
-                  onChange={(e) => setTaskName(e.target.value)}
-                  className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <div className="grid grid-cols-3 gap-2">
-                  {(["Solo", "Team", "4-Player"] as const).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setTaskType(type)}
-                      className={`glass text-[10px] font-bold py-2 rounded-lg transition-all ${
-                        taskType === type
-                          ? "text-primary border-primary/30 bg-primary/10"
-                          : "text-muted-foreground hover:text-primary"
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  placeholder="Entry Fee (pts)"
-                  type="number"
-                  value={entryFee}
-                  onChange={(e) => setEntryFee(e.target.value)}
-                  className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <button
-                  onClick={handleCreateBattle}
-                  className="w-full py-2.5 rounded-lg font-display text-xs font-bold tracking-wider bg-primary text-primary-foreground hover:opacity-90 transition-all"
-                >
-                  CREATE & SCHEDULE
-                </button>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Middle: Live Battles */}
+          {/* Redeem Requests */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -172,61 +193,9 @@ const AdminDashboard = () => {
             className="glass p-5"
           >
             <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-primary" /> LIVE BATTLES ({liveBattles.length})
-            </h3>
-            <div className="space-y-3">
-              {liveBattles.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">No live battles. Create one!</p>
-              )}
-              {liveBattles.map((battle) => (
-                <div key={battle.id} className="glass p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-bold text-foreground">{battle.title}</p>
-                    <span className="text-[10px] font-bold text-secondary uppercase">{battle.status}</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    {battle.type} • {Object.keys(battle.players).length}/{battle.maxPlayers} players • Prize: {battle.prize} pts
-                  </p>
-                  {Object.entries(battle.players).map(([uid, player]) => (
-                    <div key={uid} className="flex items-center justify-between py-1">
-                      <span className="text-xs text-foreground">{player.name} ({player.votes} votes)</span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleReward(uid, player.name)}
-                          className="p-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20"
-                          title="Add 500 pts"
-                        >
-                          <Gift className="h-3 w-3 text-emerald-400" />
-                        </button>
-                        <button
-                          onClick={() => handleDeclareWinner(battle.id, uid, battle.prize)}
-                          className="p-1 rounded bg-primary/10 hover:bg-primary/20"
-                          title="Declare Winner"
-                        >
-                          <Trophy className="h-3 w-3 text-primary" />
-                        </button>
-                        <button className="p-1 rounded bg-destructive/10 hover:bg-destructive/20" title="Kick">
-                          <UserX className="h-3 w-3 text-destructive" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Right: Redeem Requests */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="glass p-5"
-          >
-            <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-secondary" /> REDEEM REQUESTS
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-60 overflow-y-auto">
               {redeemRequests.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-4">No redeem requests.</p>
               )}
@@ -252,13 +221,13 @@ const AdminDashboard = () => {
                   {req.status === "pending" && (
                     <div className="flex gap-2 mt-2">
                       <button
-                        onClick={async () => { await approveRedeemRequest(req.id); toast.success(`₹${req.amount} approved for ${req.displayName}`); }}
+                        onClick={async () => { await approveRedeemRequest(req.id); toast.success(`₹${req.amount} approved`); }}
                         className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all"
                       >
                         APPROVE
                       </button>
                       <button
-                        onClick={async () => { await rejectRedeemRequest(req.id); toast.info(`Rejected & refunded ₹${req.amount}`); }}
+                        onClick={async () => { await rejectRedeemRequest(req.id); toast.info("Rejected & refunded"); }}
                         className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-destructive/20 text-destructive hover:bg-destructive/30 transition-all"
                       >
                         REJECT
@@ -270,6 +239,161 @@ const AdminDashboard = () => {
             </div>
           </motion.div>
         </div>
+
+        {/* ── Users Table ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="glass p-5"
+        >
+          <h3 className="font-display text-sm font-bold text-foreground mb-5 flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" /> ALL USERS ({allUsers.length})
+          </h3>
+
+          {allUsers.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-6">No users found in Firestore.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">User</th>
+                    <th className="text-left py-2 px-3 text-muted-foreground font-medium">Email</th>
+                    <th className="text-right py-2 px-3 text-muted-foreground font-medium">Balance</th>
+                    <th className="text-center py-2 px-3 text-muted-foreground font-medium">Status</th>
+                    <th className="text-center py-2 px-3 text-muted-foreground font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allUsers.map((u) => (
+                    <tr
+                      key={u.uid}
+                      className="border-b border-border/40 hover:bg-muted/10 transition-colors"
+                    >
+                      {/* Avatar + name */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2">
+                          {u.photoURL ? (
+                            <img src={u.photoURL} alt="" className="w-7 h-7 rounded-full border border-border" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
+                              {u.displayName?.charAt(0)?.toUpperCase() || "?"}
+                            </div>
+                          )}
+                          <span className="font-medium text-foreground">{u.displayName || "—"}</span>
+                        </div>
+                      </td>
+
+                      {/* Email */}
+                      <td className="py-3 px-3 text-muted-foreground">{u.email}</td>
+
+                      {/* Balance */}
+                      <td className="py-3 px-3 text-right font-display font-bold text-primary">
+                        {(u.balance ?? 0).toLocaleString()} pts
+                      </td>
+
+                      {/* Battle status badge */}
+                      <td className="py-3 px-3 text-center">
+                        {u.battleStatus === "winner" ? (
+                          <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
+                            🏆 Winner
+                          </span>
+                        ) : (
+                          <span className="bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
+                            —
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Action buttons */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center justify-center gap-2">
+                          {/* +500 pts reward */}
+                          <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleReward(u.uid, u.displayName || u.email)}
+                            title="Add 500 pts"
+                            className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 transition-all"
+                          >
+                            <Gift className="h-3.5 w-3.5 text-emerald-400" />
+                          </motion.button>
+
+                          {/* Declare winner: +100 pts + battleStatus = 'winner' */}
+                          <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleDeclareWinnerByUid(u.uid, u.displayName || u.email)}
+                            disabled={declaringWinner === u.uid}
+                            title="Declare Winner (+100 pts)"
+                            data-testid={`button-declare-winner-${u.uid}`}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-display text-[10px] font-bold tracking-wider
+                                       bg-primary/10 border border-primary/20 text-primary
+                                       hover:bg-primary hover:text-primary-foreground transition-all
+                                       disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Trophy className="h-3 w-3" />
+                            {declaringWinner === u.uid ? "..." : "Declare Winner"}
+                          </motion.button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </motion.div>
+
+        {/* ── Live Battles ── */}
+        {liveBattles.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="glass p-5"
+          >
+            <h3 className="font-display text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" /> LIVE BATTLES ({liveBattles.length})
+            </h3>
+            <div className="space-y-3">
+              {liveBattles.map((battle) => (
+                <div key={battle.id} className="glass p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-foreground">{battle.title}</p>
+                    <span className="text-[10px] font-bold text-secondary uppercase">{battle.status}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {battle.type} • {Object.keys(battle.players).length}/{battle.maxPlayers} players • Prize: {battle.prize} pts
+                  </p>
+                  {Object.entries(battle.players).map(([uid, player]) => (
+                    <div key={uid} className="flex items-center justify-between py-1">
+                      <span className="text-xs text-foreground">{player.name} ({player.votes} votes)</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleReward(uid, player.name)}
+                          className="p-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20"
+                          title="Add 500 pts"
+                        >
+                          <Gift className="h-3 w-3 text-emerald-400" />
+                        </button>
+                        <button
+                          onClick={() => handleDeclareWinnerFromBattle(battle.id, uid, battle.prize)}
+                          className="p-1 rounded bg-primary/10 hover:bg-primary/20"
+                          title="Declare Winner"
+                        >
+                          <Trophy className="h-3 w-3 text-primary" />
+                        </button>
+                        <button className="p-1 rounded bg-destructive/10 hover:bg-destructive/20" title="Kick">
+                          <UserX className="h-3 w-3 text-destructive" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   );

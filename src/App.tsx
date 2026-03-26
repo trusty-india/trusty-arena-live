@@ -11,6 +11,7 @@ import BattleLive from "./pages/BattleLive.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
 import Profile from "./pages/Profile.tsx";
 import PvP from "./pages/PvP.tsx";
+import Leaderboard from "./pages/Leaderboard.tsx";
 import Login from "./pages/Login.tsx";
 import NotFound from "./pages/NotFound.tsx";
 

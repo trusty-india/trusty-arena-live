@@ -73,7 +73,7 @@ const AdminDashboard = () => {
       origin: { y: 0.6 },
       colors: ["#3B82F6", "#EF4444", "#10B981", "#F59E0B"],
     });
-    toast.success(`?? 500 pts added to ${name}!`);
+    toast.success(`🎉 500 pts added to ${name}!`);
   };
 
   const handleCreateBattle = async () => {
@@ -90,7 +90,7 @@ const AdminDashboard = () => {
     });
     setTaskName("");
     setEntryFee("");
-    toast.success("? Battle created!");
+    toast.success("✅ Battle created!");
   };
 
   const handleDeclareWinnerFromBattle = async (
@@ -118,7 +118,7 @@ const AdminDashboard = () => {
         origin: { y: 0.4 },
         colors: ["#3B82F6", "#F59E0B", "#10B981"],
       });
-      toast.success(`?? ${name} declared winner! +100 pts`);
+      toast.success(`🏆 ${name} declared winner! +100 pts`);
     } catch {
       toast.error("Failed to declare winner");
     } finally {
@@ -148,7 +148,7 @@ const AdminDashboard = () => {
           </div>
         </motion.div>
 
-        {/* -- Top row: controls -- */}
+        {/* ── Top row: controls ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Master Mic */}
           <motion.div
@@ -168,14 +168,14 @@ const AdminDashboard = () => {
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               }`}
             >
-              {isMicOn ? "??? LIVE — Speaking to All" : "TAP TO GO LIVE"}
+              {isMicOn ? "🎙️ LIVE — Speaking to All" : "TAP TO GO LIVE"}
             </motion.button>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <button className="glass text-[10px] font-bold py-2 rounded-lg text-secondary hover:bg-secondary/10 transition-all">
-                ?? Send Warning
+                ⚠️ Send Warning
               </button>
               <button className="glass text-[10px] font-bold py-2 rounded-lg text-emerald-400 hover:bg-emerald-400/10 transition-all">
-                ?? Congratulate
+                🎉 Congratulate
               </button>
             </div>
           </motion.div>
@@ -272,7 +272,7 @@ const AdminDashboard = () => {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    ?{req.amount} ? {req.upiId}
+                    ₹{req.amount} → {req.upiId}
                   </p>
                   <p className="text-[10px] text-muted-foreground/60">
                     {req.email}
@@ -282,7 +282,7 @@ const AdminDashboard = () => {
                       <button
                         onClick={async () => {
                           await approveRedeemRequest(req.id);
-                          toast.success(`?${req.amount} approved`);
+                          toast.success(`₹${req.amount} approved`);
                         }}
                         className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all"
                       >
@@ -305,7 +305,7 @@ const AdminDashboard = () => {
           </motion.div>
         </div>
 
-        {/* -- Users Table -- */}
+        {/* ── Users Table ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -376,7 +376,7 @@ const AdminDashboard = () => {
                       <td className="py-3 px-3 text-center">
                         {u.battleStatus === "winner" ? (
                           <span className="bg-amber-500/20 text-amber-400 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
-                            ?? Winner
+                            🏆 Winner
                           </span>
                         ) : (
                           <span className="bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
@@ -427,7 +427,7 @@ const AdminDashboard = () => {
           )}
         </motion.div>
 
-        {/* -- Active Arenas Master Control -- */}
+        {/* ── Active Arenas Master Control ── */}
         {liveBattles.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}

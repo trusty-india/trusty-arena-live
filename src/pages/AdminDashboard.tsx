@@ -5,8 +5,6 @@ import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useAuth } from "@/contexts/AuthContext";
 import { addPointsToUser, declareWinner, createBattle, subscribeToBattles, Battle } from "@/lib/battleService";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 interface RedeemRequest {
   id: string;

@@ -22,6 +22,16 @@ Trusty is a React + TypeScript frontend app — India's Most Trusted Live Compet
 ## Firebase Config
 Firebase credentials are hardcoded in `src/lib/firebase.ts` (public-facing web API keys, standard for Firebase client SDKs).
 
+## Agora Video Calling
+- Package: `agora-rtc-react`
+- App ID: `01eefeb03e6a4ff1b6131ca9e3d057a8`
+- Channel: `trusty-battle`
+- Mode: Testing (no token required, `token: null`)
+- Component: `src/components/VideoArena.tsx`
+- 2x2 grid layout: local user + up to 3 remote users
+- Empty slots show "Waiting for Player..." cards
+- Controls: Mute Audio, Stop Video, Leave Battle
+
 ## Running the App
 - Dev server: `npm run dev` (port 5000)
 - Build: `npm run build`

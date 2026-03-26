@@ -1,23 +1,15 @@
 import Navbar from "@/components/Navbar";
-import PlayerVideo from "@/components/PlayerVideo";
+import VideoArena from "@/components/VideoArena";
 import LiveNotifications from "@/components/LiveNotification";
 import PTTButton from "@/components/PTTButton";
 import { motion } from "framer-motion";
 import { MessageSquare, Volume2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { subscribeToBattle, voteForPlayer, Battle } from "@/lib/battleService";
+import { subscribeToBattle, Battle } from "@/lib/battleService";
 import confetti from "canvas-confetti";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Demo battle ID — replace with dynamic routing later
 const DEMO_BATTLE_ID = "demo-battle-1";
-
-const fallbackPlayers = [
-  { name: "Rahul", city: "Delhi", votes: 342, color: "blue" as const },
-  { name: "Priya", city: "Mumbai", votes: 289, color: "red" as const },
-  { name: "Ankit", city: "Bangalore", votes: 198, color: "blue" as const },
-  { name: "Sneha", city: "Jaipur", votes: 271, color: "red" as const },
-];
 
 const BattleLive = () => {
   const { profile } = useAuth();
@@ -35,24 +27,7 @@ const BattleLive = () => {
     return unsub;
   }, [profile?.uid, showWinConfetti]);
 
-  // Derive players from Firestore or use fallback
-  const players = battle
-    ? Object.entries(battle.players).map(([uid, p], i) => ({
-        name: p.name,
-        city: p.city,
-        votes: p.votes,
-        color: (i % 2 === 0 ? "blue" : "red") as "blue" | "red",
-        uid,
-      }))
-    : fallbackPlayers.map((p, i) => ({ ...p, uid: `fallback-${i}` }));
-
-  const totalVotes = players.reduce((sum, p) => sum + p.votes, 0);
-
-  const handleVote = async (uid: string) => {
-    if (battle) {
-      await voteForPlayer(battle.id, uid);
-    }
-  };
+  const userName = profile?.displayName || profile?.email?.split("@")[0] || "Player";
 
   return (
     <div className="min-h-screen">
@@ -74,7 +49,9 @@ const BattleLive = () => {
               </h1>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {battle ? `${battle.type} Battle • Entry: ${battle.entryFee} pts • Prize: ${battle.prize} pts` : "4-Player Battle • Entry: 50 pts • Prize: 180 pts"}
+              {battle
+                ? `${battle.type} Battle • Entry: ${battle.entryFee} pts • Prize: ${battle.prize} pts`
+                : "4-Player Battle • Entry: 50 pts • Prize: 180 pts"}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -96,29 +73,17 @@ const BattleLive = () => {
             className="glass-strong p-4 mb-6 text-center border border-primary/30"
           >
             <p className="font-display text-lg font-bold text-primary">
-              🏆 {players.find(p => p.uid === battle.winnerId)?.name ?? "Winner"} WINS! +{battle.prize} pts
+              🏆 WINNER! +{battle.prize} pts
             </p>
           </motion.div>
         )}
 
-        {/* 4-Player Video Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {players.map((player, i) => (
-            <PlayerVideo
-              key={player.uid}
-              name={player.name}
-              city={player.city}
-              votes={player.votes}
-              color={player.color}
-              totalVotes={totalVotes}
-              index={i}
-              onVote={() => handleVote(player.uid)}
-              isWinner={battle?.winnerId === player.uid}
-            />
-          ))}
+        {/* Agora Video Arena — 2x2 grid with live video */}
+        <div className="mb-8">
+          <VideoArena userName={userName} />
         </div>
 
-        {/* Chat section */}
+        {/* Live Chat */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -132,8 +97,8 @@ const BattleLive = () => {
           </div>
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {[
-              { user: "Vikram", msg: "Rahul is killing it! 🔥" },
-              { user: "Meera", msg: "Go Priya! 💪" },
+              { user: "Vikram", msg: "This battle is 🔥" },
+              { user: "Meera", msg: "Come on! 💪" },
               { user: "Admin", msg: "Next round starting in 30 seconds...", isAdmin: true },
             ].map((chat, i) => (
               <div key={i} className="flex items-start gap-2">
@@ -148,9 +113,13 @@ const BattleLive = () => {
             <input
               type="text"
               placeholder="Type a message..."
+              data-testid="input-chat"
               className="flex-1 bg-muted/50 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
-            <button className="px-4 py-2 bg-primary/20 text-primary rounded-lg text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all">
+            <button
+              data-testid="button-send-chat"
+              className="px-4 py-2 bg-primary/20 text-primary rounded-lg text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all"
+            >
               Send
             </button>
           </div>

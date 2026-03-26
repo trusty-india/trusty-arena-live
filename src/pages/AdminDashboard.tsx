@@ -26,6 +26,11 @@ const AdminDashboard = () => {
     return unsub;
   }, []);
 
+  useEffect(() => {
+    const unsub = subscribeToAllRedeemRequests(setRedeemRequests);
+    return unsub;
+  }, []);
+
   const handleReward = async (uid: string, name: string) => {
     await addPointsToUser(uid, 500);
     confetti({

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Users, Clock, Zap, Trophy } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface BattleCardProps {
   title: string;
@@ -21,6 +22,7 @@ const statusConfig = {
 
 const BattleCard = ({ title, type, entryFee, prize, players, maxPlayers, status, timeLeft, index }: BattleCardProps) => {
   const s = statusConfig[status];
+  const navigate = useNavigate();
 
   return (
     <motion.div
@@ -84,6 +86,7 @@ const BattleCard = ({ title, type, entryFee, prize, players, maxPlayers, status,
 
         <motion.button
           whileTap={{ scale: 0.95 }}
+          onClick={() => navigate("/battle/live")}
           className="w-full py-2.5 rounded-lg font-display text-xs font-bold tracking-wider 
                      bg-primary/10 text-primary border border-primary/20 
                      hover:bg-primary hover:text-primary-foreground transition-all duration-200"

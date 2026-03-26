@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
 import { Zap, Shield, Trophy } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
   return (
     <section className="relative py-20 px-6 overflow-hidden">
       {/* Background glow effects */}
@@ -34,6 +36,7 @@ const HeroSection = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/battle/live")}
               className="px-8 py-3 rounded-xl font-display text-sm font-bold tracking-wider 
                          bg-primary text-primary-foreground neon-glow-blue transition-all"
             >
@@ -42,6 +45,7 @@ const HeroSection = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/battle/live")}
               className="px-8 py-3 rounded-xl font-display text-sm font-bold tracking-wider 
                          glass border-primary/30 text-primary hover:bg-primary/10 transition-all"
             >

@@ -9,6 +9,7 @@ import AdminRoute from "@/components/AdminRoute";
 import Index from "./pages/Index.tsx";
 import BattleLive from "./pages/BattleLive.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
+import Profile from "./pages/Profile.tsx";
 import Login from "./pages/Login.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/battle/live" element={<ProtectedRoute><BattleLive /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -44,17 +44,19 @@ const Navbar = () => {
             <span className="text-xs text-muted-foreground">pts</span>
           </div>
 
-          {profile?.photoURL ? (
-            <img
-              src={profile.photoURL}
-              alt={profile.displayName}
-              className="w-8 h-8 rounded-full border-2 border-primary/30"
-            />
-          ) : (
-            <div className="glass p-2 rounded-full">
-              <User className="h-4 w-4 text-foreground" />
-            </div>
-          )}
+          <Link to="/profile">
+            {profile?.photoURL ? (
+              <img
+                src={profile.photoURL}
+                alt={profile.displayName}
+                className="w-8 h-8 rounded-full border-2 border-primary/30 hover:border-primary transition-colors"
+              />
+            ) : (
+              <div className="glass p-2 rounded-full hover:bg-primary/10 transition-colors">
+                <User className="h-4 w-4 text-foreground" />
+              </div>
+            )}
+          </Link>
 
           {isAdmin && (
             <Link to="/admin" className="glass p-2 rounded-full hover:neon-glow-crimson transition-shadow">

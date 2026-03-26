@@ -12,6 +12,7 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import Profile from "./pages/Profile.tsx";
 import PvP from "./pages/PvP.tsx";
 import Leaderboard from "./pages/Leaderboard.tsx";
+import Redeem from "./pages/Redeem.tsx";
 import Login from "./pages/Login.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/pvp" element={<ProtectedRoute><PvP /></ProtectedRoute>} />
             <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+            <Route path="/redeem" element={<ProtectedRoute><Redeem /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

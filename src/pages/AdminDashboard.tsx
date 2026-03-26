@@ -5,24 +5,14 @@ import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useAuth } from "@/contexts/AuthContext";
 import { addPointsToUser, declareWinner, createBattle, subscribeToBattles, Battle } from "@/lib/battleService";
-
-interface RedeemRequest {
-  id: string;
-  user: string;
-  amount: number;
-  upi: string;
-  status: string;
-}
+import { subscribeToAllRedeemRequests, approveRedeemRequest, rejectRedeemRequest, RedeemRequest } from "@/lib/redeemService";
+import { toast } from "sonner";
 
 const AdminDashboard = () => {
   const { profile } = useAuth();
   const [isMicOn, setIsMicOn] = useState(false);
   const [liveBattles, setLiveBattles] = useState<Battle[]>([]);
-  const [redeemRequests] = useState<RedeemRequest[]>([
-    { id: "1", user: "Vikram", amount: 500, upi: "vikram@upi", status: "pending" },
-    { id: "2", user: "Meera", amount: 1200, upi: "meera@upi", status: "pending" },
-    { id: "3", user: "Arjun", amount: 300, upi: "arjun@upi", status: "approved" },
-  ]);
+  const [redeemRequests, setRedeemRequests] = useState<RedeemRequest[]>([]);
 
   // Task creation state
   const [taskName, setTaskName] = useState("");
@@ -33,6 +23,11 @@ const AdminDashboard = () => {
     const unsub = subscribeToBattles((battles) => {
       setLiveBattles(battles.filter((b) => b.status === "live" || b.status === "open"));
     });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = subscribeToAllRedeemRequests(setRedeemRequests);
     return unsub;
   }, []);
 
@@ -232,25 +227,40 @@ const AdminDashboard = () => {
               <CreditCard className="h-4 w-4 text-secondary" /> REDEEM REQUESTS
             </h3>
             <div className="space-y-3">
+              {redeemRequests.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">No redeem requests.</p>
+              )}
               {redeemRequests.map((req) => (
                 <div key={req.id} className="glass p-3">
                   <div className="flex justify-between items-center mb-2">
-                    <p className="text-sm font-bold text-foreground">{req.user}</p>
+                    <div className="flex items-center gap-2">
+                      {req.photoURL && <img src={req.photoURL} alt="" className="w-6 h-6 rounded-full" />}
+                      <p className="text-sm font-bold text-foreground">{req.displayName}</p>
+                    </div>
                     <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
                       req.status === "pending"
                         ? "bg-amber-500/20 text-amber-400"
-                        : "bg-emerald-500/20 text-emerald-400"
+                        : req.status === "approved"
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-destructive/20 text-destructive"
                     }`}>
                       {req.status}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">₹{req.amount} → {req.upi}</p>
+                  <p className="text-xs text-muted-foreground">₹{req.amount} → {req.upiId}</p>
+                  <p className="text-[10px] text-muted-foreground/60">{req.email}</p>
                   {req.status === "pending" && (
                     <div className="flex gap-2 mt-2">
-                      <button className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all">
+                      <button
+                        onClick={async () => { await approveRedeemRequest(req.id); toast.success(`₹${req.amount} approved for ${req.displayName}`); }}
+                        className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all"
+                      >
                         APPROVE
                       </button>
-                      <button className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-destructive/20 text-destructive hover:bg-destructive/30 transition-all">
+                      <button
+                        onClick={async () => { await rejectRedeemRequest(req.id); toast.info(`Rejected & refunded ₹${req.amount}`); }}
+                        className="flex-1 py-1.5 rounded-lg text-[10px] font-bold bg-destructive/20 text-destructive hover:bg-destructive/30 transition-all"
+                      >
                         REJECT
                       </button>
                     </div>

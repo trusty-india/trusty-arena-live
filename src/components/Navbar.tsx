@@ -36,13 +36,13 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="glass flex items-center gap-2 px-3 py-1.5 rounded-full">
+          <Link to="/redeem" className="glass flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-primary/10 transition-colors">
             <Wallet className="h-4 w-4 text-primary" />
             <span className="text-sm font-semibold text-foreground">
               {profile?.balance?.toLocaleString() ?? "0"}
             </span>
             <span className="text-xs text-muted-foreground">pts</span>
-          </div>
+          </Link>
 
           <Link to="/profile">
             {profile?.photoURL ? (

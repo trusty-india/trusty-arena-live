@@ -5,24 +5,14 @@ import { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { useAuth } from "@/contexts/AuthContext";
 import { addPointsToUser, declareWinner, createBattle, subscribeToBattles, Battle } from "@/lib/battleService";
-
-interface RedeemRequest {
-  id: string;
-  user: string;
-  amount: number;
-  upi: string;
-  status: string;
-}
+import { subscribeToAllRedeemRequests, approveRedeemRequest, rejectRedeemRequest, RedeemRequest } from "@/lib/redeemService";
+import { toast } from "sonner";
 
 const AdminDashboard = () => {
   const { profile } = useAuth();
   const [isMicOn, setIsMicOn] = useState(false);
   const [liveBattles, setLiveBattles] = useState<Battle[]>([]);
-  const [redeemRequests] = useState<RedeemRequest[]>([
-    { id: "1", user: "Vikram", amount: 500, upi: "vikram@upi", status: "pending" },
-    { id: "2", user: "Meera", amount: 1200, upi: "meera@upi", status: "pending" },
-    { id: "3", user: "Arjun", amount: 300, upi: "arjun@upi", status: "approved" },
-  ]);
+  const [redeemRequests, setRedeemRequests] = useState<RedeemRequest[]>([]);
 
   // Task creation state
   const [taskName, setTaskName] = useState("");

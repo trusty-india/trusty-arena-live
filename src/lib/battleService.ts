@@ -47,15 +47,50 @@ export const voteForPlayer = async (battleId: string, playerUid: string) => {
   });
 };
 
-export const addPointsToUser = async (uid: string, points: number) => {
+export const logTransaction = async (
+  uid: string,
+  type: "reward" | "win" | "entry_fee" | "redeem",
+  amount: number,
+  description: string
+) => {
+  const txRef = doc(collection(db, "users", uid, "transactions"));
+  await setDoc(txRef, {
+    type,
+    amount,
+    description,
+    createdAt: Timestamp.now(),
+  });
+};
+
+export const addPointsToUser = async (uid: string, points: number, reason = "Admin Reward") => {
   const userRef = doc(db, "users", uid);
   await updateDoc(userRef, { balance: increment(points) });
+  await logTransaction(uid, "reward", points, reason);
 };
 
 export const declareWinner = async (battleId: string, winnerUid: string, prize: number) => {
   const battleRef = doc(db, "battles", battleId);
   await updateDoc(battleRef, { winnerId: winnerUid, status: "finished" });
-  await addPointsToUser(winnerUid, prize);
+  const userRef = doc(db, "users", winnerUid);
+  await updateDoc(userRef, { balance: increment(prize) });
+  await logTransaction(winnerUid, "win", prize, `Won battle ${battleId}`);
+};
+
+export interface Transaction {
+  id: string;
+  type: "reward" | "win" | "entry_fee" | "redeem";
+  amount: number;
+  description: string;
+  createdAt: Timestamp;
+}
+
+export const subscribeToTransactions = (uid: string, cb: (txns: Transaction[]) => void) => {
+  return onSnapshot(collection(db, "users", uid, "transactions"), (snap) => {
+    const txns = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as Transaction)
+      .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+    cb(txns);
+  });
 };
 
 export const createBattle = async (battle: Omit<Battle, "id" | "createdAt">) => {

@@ -21,6 +21,11 @@ export interface Battle {
   status: "live" | "open" | "upcoming" | "finished";
   winnerId?: string;
   isSpecial?: boolean;
+  isQuizActive?: boolean;
+  quizSetId?: string;
+  quizStartedAt?: Timestamp;
+  quizEnded?: boolean;
+  playerAnswers?: Record<string, number[]>;
   createdAt: Timestamp;
 }
 
